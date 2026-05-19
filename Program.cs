@@ -118,13 +118,18 @@ namespace E_Commerce_System
        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
        
         // case 1: Get user details
-        public static void UserInformation()
+        public static void UserInformation() ///XXX
         {
-            var currntUserId = context.Users.Select(s => new { s.UId, s.UName, s.Email, s.Phone, s.Role, s.CreatedAt}).ToList();
+            var currentUser = context.Users.FirstOrDefault(u => u.UId == currentUserId);
+            Console.WriteLine("User Info:");
+            Console.WriteLine("Name: " + currentUser.UName);
+            Console.WriteLine("Email: " + currentUser.Email);
+            Console.WriteLine("Phone: " + currentUser.Phone);
+            Console.WriteLine("Role: " + currentUser.Role);
         }
 
         // case 2: Add a new product
-        public static void AddProduct()
+        public static void AddProduct() //Okay
         {
             Console.WriteLine("Enter product name: ");
             string prodName = Console.ReadLine()?.Trim();
@@ -172,6 +177,7 @@ namespace E_Commerce_System
                     Console.WriteLine("Product price should be greater than zero.");
                     return;
                 }
+                product.Price = price;
 
                 Console.WriteLine("Enter new product stock: ");
                 int stock = int.Parse(Console.ReadLine()?.Trim());
@@ -181,6 +187,7 @@ namespace E_Commerce_System
                     Console.WriteLine("Product price should be greater than or equal zero.");
                     return;
                 }
+                product.Stock = stock;
 
                 context.Products.Update(product);
                 context.SaveChanges();  
@@ -217,11 +224,17 @@ namespace E_Commerce_System
             Console.WriteLine("Enter product ID: ");
             int productId = int.Parse(Console.ReadLine()?.Trim());
 
-            Product prod = context.Products.FirstOrDefault(p => p.PId == productId);
+            var product = context.Products.Select(p => new { p.PId, p.PName, p.Price, p.Description, p.Stock })
+                                          .FirstOrDefault(p => p.PId == productId);
 
-            if (prod != null)
+            if (product != null)
             {
-                var product = context.Products.Select(p => new { p.PName, p.Price, p.Description, p.Stock });
+
+                Console.WriteLine("User Info:");
+                Console.WriteLine("Name: " + product.PName);
+                Console.WriteLine("Description: " + product.Description);
+                Console.WriteLine("Stock: " + product.Stock);
+
             }
 
             else
@@ -254,7 +267,7 @@ namespace E_Commerce_System
 
             while (adding)
             {
-                Console.WriteLine("\n=== Available Products ===");
+                Console.WriteLine("=== Available Products ===");
 
                 var products = context.Products.ToList();
 
@@ -263,7 +276,7 @@ namespace E_Commerce_System
                     Console.WriteLine($"ID: {p.PId} | Name: {p.PName} | Price: {p.Price} | Stock: {p.Stock}");
                 }
 
-                Console.Write("\nEnter Product ID (0 to finish): ");
+                Console.Write("Enter Product ID (0 to finish): ");
                 int productId = int.Parse(Console.ReadLine());
 
                 if (productId == 0)
@@ -312,7 +325,7 @@ namespace E_Commerce_System
 
             context.SaveChanges();
 
-            Console.WriteLine("\n===== ORDER COMPLETED =====");
+            Console.WriteLine("===== ORDER COMPLETED =====");
             Console.WriteLine($"Order ID: {order.OId}");
             Console.WriteLine($"Total Amount: {totalAmount}");
             Console.ReadKey();
@@ -323,9 +336,9 @@ namespace E_Commerce_System
         public static void GetUserOrders()
         {
             var orders = context.Orders.Where(o => o.UId == currentUserId)
-            .OrderByDescending(o => o.OrderDate)
-            .ToList();
-            Console.WriteLine("=== My Orders ===\n");
+                                       .OrderByDescending(o => o.OrderDate)
+                                       .ToList();
+            Console.WriteLine("=== My Orders ===");
             if (!orders.Any())
             {
                 Console.WriteLine("No orders yet.");
@@ -348,7 +361,19 @@ namespace E_Commerce_System
         // case 8: Get order details
         public static void OrderDetail()
         {
-            var orders = context.Orders.Select(o => new { o.OId, o.OrderDate }).ToList();
+            Console.WriteLine("Enter order ID: ");
+            int orderID = int.Parse(Console.ReadLine());
+
+            Order orders = context.Orders.Find(orderID);
+
+            if (orders == null)
+            {
+                Console.WriteLine("Order not found!");
+                return;
+            }
+
+            Console.WriteLine("Order Date: " + orders.OrderDate);
+            Console.WriteLine("Order total amount: " + orders.TotalAmount);
         }
 
         // case 9: Add a review for a product
@@ -372,10 +397,9 @@ namespace E_Commerce_System
                 Console.WriteLine("Enter comment: ");
                 string comment = Console.ReadLine().Trim();
 
-                Console.WriteLine("Enter review date: ");
-                DateTime date = DateTime.Parse( Console.ReadLine().Trim() );
+                DateTime date = DateTime.Now;
 
-                context.Reviews.Add( new Review { Rating = rate, Comment = comment, ReviewDate = date});
+                context.Reviews.Add( new Review { Rating = rate, Comment = comment, ReviewDate = date, UId=currentUserId, PId= productId });
                 context.SaveChanges();
             }
 
@@ -433,7 +457,7 @@ namespace E_Commerce_System
                 return;
             }
 
-            Console.WriteLine("\n=== Your Reviews ====");
+            Console.WriteLine("=== Your Reviews ====");
 
             foreach (var r in myReviews)
             {
@@ -453,8 +477,8 @@ namespace E_Commerce_System
                 return;
             }
 
-            Console.WriteLine("\n1. Edit Review");
-            Console.WriteLine("\n2. Delete Review");
+            Console.WriteLine("1. Edit Review");
+            Console.WriteLine("2. Delete Review");
             Console.Write("Choose option: ");
 
             int choice = int.Parse(Console.ReadLine());
@@ -475,7 +499,7 @@ namespace E_Commerce_System
             }
             else if (choice == 2)
             {
-                Console.WriteLine("\nAre you sure want to delet this review? (y/n)");
+                Console.WriteLine("Are you sure want to delet this review? (y/n)");
                 string confirm = Console.ReadLine()?.Trim().ToLower();
 
                 if (confirm == "y" || confirm == "yes")
