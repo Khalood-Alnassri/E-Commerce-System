@@ -33,6 +33,9 @@ namespace E_Commerce_System.Migrations
                     b.Property<DateTime?>("OrderDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int>("UId")
                         .HasColumnType("int");
 

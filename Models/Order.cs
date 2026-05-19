@@ -14,14 +14,7 @@ namespace E_Commerce_System.Models
 
         public DateTime? OrderDate { get; set; }
 
-        [NotMapped]
-        public decimal TotalAmount
-        {
-            get
-            {
-                return OrderProducts.Sum(op => op.Quantity * op.Product.Price);
-            }
-        }
+        public decimal TotalAmount { get; set; }
 
         [ForeignKey("User")]
         public int UId { get; set; }

@@ -80,45 +80,45 @@ namespace E_Commerce_System
         static void Login()
         {
             Console.Clear();
-            Console.WriteLine("===== Login =====\n");
+            Console.WriteLine("===== Login =====");
 
             Console.Write("Enter your Email: ");
-            string lEmail = Console.ReadLine()?.Trim();
+            string logEmail = Console.ReadLine()?.Trim();
 
             Console.WriteLine("Enter your password: ");
-            string lPassword = Console.ReadLine();
+            string logPassword = Console.ReadLine();
 
-            if (string.IsNullOrWhiteSpace(lEmail) || string.IsNullOrWhiteSpace(lPassword))
+            if (string.IsNullOrWhiteSpace(logEmail) || string.IsNullOrWhiteSpace(logPassword))
             {
-                Console.WriteLine("\n Email and Password are required. ");
+                Console.WriteLine("Email and Password are required. ");
                 Console.ReadKey();
                 return;
             }
 
-            var user = context.Users.FirstOrDefault(u => u.Email == lEmail);
+            var user = context.Users.FirstOrDefault(u => u.Email == logEmail);
             if (user == null)
             {
-                Console.WriteLine("\nEmail not found.");
+                Console.WriteLine("Email not found.");
                 Console.ReadKey();
                 return;
             }
 
-            if (user.Password != lPassword)
+            if (user.Password != logPassword)
             {
-                Console.WriteLine("\nInvalid password");
+                Console.WriteLine("Invalid password");
                 Console.ReadKey();
                 return;
             }
 
             currentUserId = user.UId;
-            Console.WriteLine($"\nWelcome, {user.UName}");
+            Console.WriteLine($"Welcome, {user.UName}");
             Console.ReadKey();
         }
 
        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
        
         // case 1: Get user details
-        public static void UserInformation() ///XXX
+        public static void UserInformation()
         {
             var currentUser = context.Users.FirstOrDefault(u => u.UId == currentUserId);
             Console.WriteLine("User Info:");
@@ -129,7 +129,7 @@ namespace E_Commerce_System
         }
 
         // case 2: Add a new product
-        public static void AddProduct() //Okay
+        public static void AddProduct() 
         {
             Console.WriteLine("Enter product name: ");
             string prodName = Console.ReadLine()?.Trim();
@@ -140,7 +140,7 @@ namespace E_Commerce_System
             Console.WriteLine("Enter product price");
             decimal price = decimal.Parse(Console.ReadLine()?.Trim());
 
-            if(price <= 0)
+            if(price <= 0) // check price
             {
                 Console.WriteLine("Product price should be greater than zero.");
                 return;
@@ -149,14 +149,16 @@ namespace E_Commerce_System
             Console.WriteLine("Enter product stock: ");
             int stock = int.Parse(Console.ReadLine()?.Trim());
 
-            if (stock < 0)
+            if (stock < 0) // check stock
             {
                 Console.WriteLine("Product price should be greater than or equal zero.");
                 return;
             } 
 
+            // add product
             context.Products.Add( new Product { PName = prodName, Description = descript, Price = price, Stock = stock });
-            context.SaveChanges();
+            context.SaveChanges(); // save change in database
+            Console.WriteLine("Product added successfully.");
         }
 
         // case 3: Update product details
@@ -165,32 +167,37 @@ namespace E_Commerce_System
             Console.WriteLine("Enter product ID: ");
             int prodId = int.Parse(Console.ReadLine()?.Trim());
 
-            Product product = context.Products.Find(prodId);
+            Product product = context.Products.Find(prodId); 
 
             if(product != null)
             {
                 Console.WriteLine("Enter new product price");
                 decimal price = decimal.Parse(Console.ReadLine()?.Trim());
 
-                if (price <= 0)
+                if (price <= 0) // check the price
                 {
                     Console.WriteLine("Product price should be greater than zero.");
                     return;
                 }
+                
+                // replace price
                 product.Price = price;
 
                 Console.WriteLine("Enter new product stock: ");
                 int stock = int.Parse(Console.ReadLine()?.Trim());
 
-                if (stock < 0)
+                if (stock < 0) // check stock
                 {
                     Console.WriteLine("Product price should be greater than or equal zero.");
                     return;
                 }
+
+                // replace stock
                 product.Stock = stock;
 
-                context.Products.Update(product);
-                context.SaveChanges();  
+                context.Products.Update(product); // update the product
+                context.SaveChanges(); // save change in database
+                Console.WriteLine("Product update successfully.");
             }
 
             else
@@ -203,12 +210,19 @@ namespace E_Commerce_System
         // case 4:  Get a list of products
         public static void ListOfProducts()
         {
-            int page = 1;
-            int pageSize = 10;
+            // count all products
+            var productCount = context.Products.Count();
+
+            // user in page number 
+            Console.WriteLine("Enter page number: ");
+            int page = int.Parse(Console.ReadLine()); 
+
+            int pageSize = 10; // each page have 10 products
             var products = context.Products.Select(p => new { p.PName, p.Stock, p.Price })
                                            .OrderBy(p => p.PName)
                                            .Skip((page - 1) * pageSize)
                                            .Take(pageSize).ToList();
+
             foreach (var product in products)
             {
                 Console.WriteLine("=======================");
@@ -218,23 +232,31 @@ namespace E_Commerce_System
             }
         }
 
-        // case 5: Get product details
+        // case 5: Get product details by ID
         public static void ProductDetail()
         {
+            // loop and list all product with id and name
+            var prod = context.Products.ToList();
+            foreach(var p in prod) 
+            {
+                Console.WriteLine("- Product ID: " + p.PId + " | Product name: " + p.PName);
+            }
+
+            // take product id from the user 
             Console.WriteLine("Enter product ID: ");
             int productId = int.Parse(Console.ReadLine()?.Trim());
 
+            // search for the product
             var product = context.Products.Select(p => new { p.PId, p.PName, p.Price, p.Description, p.Stock })
                                           .FirstOrDefault(p => p.PId == productId);
 
             if (product != null)
             {
-
-                Console.WriteLine("User Info:");
+                Console.WriteLine("Product Information: ");
                 Console.WriteLine("Name: " + product.PName);
                 Console.WriteLine("Description: " + product.Description);
                 Console.WriteLine("Stock: " + product.Stock);
-
+                Console.WriteLine("Price: " + product.Price);
             }
 
             else
@@ -247,12 +269,14 @@ namespace E_Commerce_System
         // case 6:  Place a new order
         public static void PlaceNewOrder()
         {
+            // check user login
             if (currentUserId == 0)
             {
                 Console.WriteLine("You must login first.");
                 return;
             }
 
+            // add order in Oredr table
             var order = new Order
             {
                 UId = currentUserId,
@@ -262,13 +286,13 @@ namespace E_Commerce_System
             context.Orders.Add(order);
             context.SaveChanges();
 
-            decimal totalAmount = 0;
             bool adding = true;
 
             while (adding)
             {
                 Console.WriteLine("=== Available Products ===");
 
+                // list all product with details
                 var products = context.Products.ToList();
 
                 foreach (var p in products)
@@ -276,14 +300,16 @@ namespace E_Commerce_System
                     Console.WriteLine($"ID: {p.PId} | Name: {p.PName} | Price: {p.Price} | Stock: {p.Stock}");
                 }
 
+                // take product ID from the user
                 Console.Write("Enter Product ID (0 to finish): ");
                 int productId = int.Parse(Console.ReadLine());
 
-                if (productId == 0)
+                if (productId == 0) // if user enter 0 the loop finish
                 {
                     break;
                 }
 
+                // search for product
                 var product = context.Products.FirstOrDefault(p => p.PId == productId);
 
                 if (product == null)
@@ -295,12 +321,14 @@ namespace E_Commerce_System
                 Console.Write("Enter Quantity: ");
                 int qty = int.Parse(Console.ReadLine());
 
+                // check quantity
                 if (qty <= 0)
                 {
                     Console.WriteLine("Invalid quantity.");
                     continue;
                 }
 
+                // check product stock
                 if (product.Stock < qty)
                 {
                     Console.WriteLine("Not enough stock.");
@@ -314,36 +342,40 @@ namespace E_Commerce_System
                     Quantity = qty
                 };
 
-                context.OrderProducts.Add(orderProduct);
+                context.OrderProducts.Add(orderProduct); // add order in OrderProducts table
 
-                totalAmount += product.Price * qty;
+                // calculate the total amount 
+                order.TotalAmount = order.OrderProducts
+                         .Sum(op => op.Quantity * op.Product.Price);
 
+                // reduce product stock
                 product.Stock -= qty;
 
                 Console.WriteLine("Product added.");
             }
 
-            context.SaveChanges();
+            context.SaveChanges(); // save change in database
 
             Console.WriteLine("===== ORDER COMPLETED =====");
             Console.WriteLine($"Order ID: {order.OId}");
-            Console.WriteLine($"Total Amount: {totalAmount}");
-            Console.ReadKey();
+            Console.WriteLine($"Total Amount: {order.TotalAmount}");
         }
-
 
         // case 7: Get all orders for a user
         public static void GetUserOrders()
         {
+            // search for all orders where user id equal current user id
             var orders = context.Orders.Where(o => o.UId == currentUserId)
                                        .OrderByDescending(o => o.OrderDate)
                                        .ToList();
             Console.WriteLine("=== My Orders ===");
-            if (!orders.Any())
+            if (!orders.Any()) // if not order 
             {
                 Console.WriteLine("No orders yet.");
                 return;
             }
+
+            // list all orders 
             for (int i = 0; i < orders.Count; i++)
             {
                 Console.WriteLine($"Order: {orders[i].OId}");
@@ -364,14 +396,18 @@ namespace E_Commerce_System
             Console.WriteLine("Enter order ID: ");
             int orderID = int.Parse(Console.ReadLine());
 
-            Order orders = context.Orders.Find(orderID);
+            // search order and include OrderProducts table then include Product table
+            var orders = context.Orders.Include(o => o.OrderProducts)
+                                         .ThenInclude(p => p.Product)
+                                         .FirstOrDefault(o => o.OId == orderID);
 
-            if (orders == null)
+            if (orders == null) // if not found
             {
                 Console.WriteLine("Order not found!");
                 return;
             }
 
+            // print order delails
             Console.WriteLine("Order Date: " + orders.OrderDate);
             Console.WriteLine("Order total amount: " + orders.TotalAmount);
         }
@@ -382,6 +418,7 @@ namespace E_Commerce_System
             Console.WriteLine("Enter product ID: ");
             int productId = int.Parse(Console.ReadLine().Trim());
 
+            // search for Product
             Product product = context.Products.Include(p => p.Reviews)
                                               .FirstOrDefault(p =>  p.PId == productId);
             if (product != null)
@@ -389,6 +426,7 @@ namespace E_Commerce_System
                 Console.WriteLine("Enter Rating (1-5): ");
                 int rate = int.Parse(Console.ReadLine().Trim());
 
+                // check rate 
                 if ( rate < 1 || rate > 5)
                 {
                     Console.WriteLine("Invalid  rating. Please enter a number between 1 and 5.");
@@ -399,8 +437,9 @@ namespace E_Commerce_System
 
                 DateTime date = DateTime.Now;
 
+                // add review
                 context.Reviews.Add( new Review { Rating = rate, Comment = comment, ReviewDate = date, UId=currentUserId, PId= productId });
-                context.SaveChanges();
+                context.SaveChanges(); // save change in database 
             }
 
             else
@@ -414,15 +453,26 @@ namespace E_Commerce_System
         // case 10: Get all reviews for a product
         public static void GetAllReview()
         {
+            // loop and list all product with id and name
+            var prod = context.Products.ToList();
+            foreach (var p in prod)
+            {
+                Console.WriteLine("- Product ID: " + p.PId + " | Product name: " + p.PName);
+            }
+
+            // take product id from the user
             Console.WriteLine("Enter product ID : ");
             int id = int.Parse(Console.ReadLine().Trim());
 
+            // search for Product
             Product product = context.Products.Include(p => p.Reviews)
                                            .FirstOrDefault(p => p.PId == id);
 
             if (product != null)
             {
-                int page = 1;
+                // take page number from user
+                Console.WriteLine("Enter page number: ");
+                int page = int.Parse(Console.ReadLine());
                 int pageSize = 5;
 
                 var review = product.Reviews.OrderByDescending(r => r.ReviewDate)
@@ -430,9 +480,10 @@ namespace E_Commerce_System
                                             .Take(pageSize)
                                             .ToList();
 
+                // list all reviews for the select product
                 foreach (var Review in review)
                 {
-                    Console.WriteLine("Reviews for " + product.PName + ": ");
+                    Console.WriteLine("Reviews for: " + product.PName);
                     Console.WriteLine("Rating: " + Review.Rating);
                     Console.WriteLine("Comment: " + Review.Comment);
                     Console.WriteLine("Date of review: " + Review.ReviewDate);
@@ -445,13 +496,13 @@ namespace E_Commerce_System
             }
         }
 
-
         // case 11:  Edit review
         public static void EditReview()
         {
+            // search all reviews for the user 
             var myReviews = context.Reviews.Where(r => r.UId == currentUserId).ToList();
 
-            if (!myReviews.Any())
+            if (!myReviews.Any()) // if no review
             {
                 Console.WriteLine("No reviews found.");
                 return;
@@ -459,6 +510,7 @@ namespace E_Commerce_System
 
             Console.WriteLine("=== Your Reviews ====");
 
+            // list all reviews
             foreach (var r in myReviews)
             {
                 Console.WriteLine($"ID: {r.RId} | Product: {r.PId} | Rating: {r.Rating}");
@@ -466,12 +518,13 @@ namespace E_Commerce_System
                 Console.WriteLine("--------------------------------");
             }
 
+            // take review id from the user
             Console.Write("Enter Review ID to edit/delet: ");
             int revId = int.Parse(Console.ReadLine());
 
             var review = context.Reviews.FirstOrDefault(r => r.RId == revId && r.UId == currentUserId);
 
-            if (review == null)
+            if (review == null) // if not found
             {
                 Console.WriteLine("Review not found");
                 return;
@@ -483,7 +536,7 @@ namespace E_Commerce_System
 
             int choice = int.Parse(Console.ReadLine());
 
-            if (choice == 1)
+            if (choice == 1) // edit review
             {
                 Console.Write("Enter new comment: ");
                 string newComm = Console.ReadLine();
@@ -497,7 +550,7 @@ namespace E_Commerce_System
 
                 Console.WriteLine("Review update successfully.");
             }
-            else if (choice == 2)
+            else if (choice == 2) // delete review
             {
                 Console.WriteLine("Are you sure want to delet this review? (y/n)");
                 string confirm = Console.ReadLine()?.Trim().ToLower();
@@ -511,14 +564,13 @@ namespace E_Commerce_System
                 }
                 else
                 {
-                    Console.WriteLine("Delete Cancelled. ");
+                    Console.WriteLine("Delete Cancelled.");
                 }
             }
             else
             {
                 Console.WriteLine("Invalid choice");
             }
-            Console.ReadKey();
         }
 
         // case 12: Logout
@@ -529,18 +581,17 @@ namespace E_Commerce_System
 
             if (confirmLogout == "yes")
             {
-                Console.WriteLine("Loging system...");
                 Console.WriteLine("Thank you for using E-Commerce System!");
                 return true;
             }
             else
             {
-                Console.WriteLine("Exit cancelled. Returning to main menu...");
+                Console.WriteLine("Exit cancelled. Returning to user menu...");
                 return false;
             }
         }
 
-
+        // user menu
         public static void UserMenu()
         {
             bool logout = false;
@@ -642,7 +693,6 @@ namespace E_Commerce_System
 
                         logout = Logout();
                         
-                        
                         break;
 
                     default:
@@ -661,6 +711,7 @@ namespace E_Commerce_System
 
         }
 
+        // system main
         static void Main(string[] args)
         {
             bool exit = false;

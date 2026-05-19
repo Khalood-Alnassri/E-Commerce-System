@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace E_Commerce_System.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260518062539_initianCreated")]
-    partial class initianCreated
+    [Migration("20260519110703_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -35,6 +35,9 @@ namespace E_Commerce_System.Migrations
 
                     b.Property<DateTime?>("OrderDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("UId")
                         .HasColumnType("int");
