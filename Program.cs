@@ -3,7 +3,10 @@ using E_Commerce_System.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.SqlServer.Query.Internal;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
+
 
 namespace E_Commerce_System
 {
@@ -11,8 +14,79 @@ namespace E_Commerce_System
     {
         static ApplicationDbContext context = new ApplicationDbContext();
         static int currentUserId = 0;
+        static string currentUserRole = "";
+        private static object user;
 
-        // function to regist user (used in main class)
+        // function helper to hash password
+        public static string HashPassword(string password)
+        {
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+
+                StringBuilder builder = new StringBuilder();
+
+                foreach (byte b in bytes)
+                {
+                    builder.Append(b.ToString("x2"));
+                }
+
+                return builder.ToString();
+            }
+        }
+
+        // helper function to check user name
+        public static bool CheckUserName(string userName)
+        {
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                Console.WriteLine("Name are required. ");
+                return false;
+            }
+
+            return true;
+        }
+
+        // helper function to check user email
+        public static bool CheckUserEmail(string userEmail)
+        {
+            if (string.IsNullOrWhiteSpace(userEmail))
+            {
+                Console.WriteLine("Email are required. ");
+                return false;
+            }
+
+            return true;
+        }
+
+        // helper function to check regex email
+        public static bool CheckRegex(string Email)
+        {
+            if (!Regex.IsMatch(Email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            {
+                Console.WriteLine("Invalid email format.");
+                return false;
+            }
+            return true;
+        }
+
+        // helper function to check user role
+        public static string CheckUserRole(string userRole)
+        {
+            if (userRole.ToLower() == "user")
+            {
+                return "User";
+            }
+
+            else if (userRole.ToLower() == "admin")
+            {
+                return "Admin";
+            }
+
+            return "Invide role";
+        }
+
+        // case 1: regist user 
         static void Register()
         {
             Console.WriteLine("====REGISTER====");
@@ -20,28 +94,19 @@ namespace E_Commerce_System
             Console.Write("Enter Name: ");
             string uName = Console.ReadLine()?.Trim();
 
+            CheckUserName(uName);
+
             Console.Write("Enter Email: ");
             string uEmail = Console.ReadLine()?.Trim();
 
-            if (string.IsNullOrWhiteSpace(uName) || string.IsNullOrWhiteSpace(uEmail))
-            {
-                Console.WriteLine("\n Name and Email are required. ");
-                Console.ReadKey();
-                return;
-            }
+            CheckUserEmail(uEmail);
 
-            if (!Regex.IsMatch(uEmail, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
-            {
-                Console.WriteLine("\nInvalid email format.");
-                Console.ReadKey();
-                return;
-            }
-
+            CheckRegex(uEmail);
+          
             var existingUser = context.Users.FirstOrDefault(u => u.Email == uEmail);
             if (existingUser != null)
             {
-                Console.WriteLine("\nEmail already exists. ");
-                Console.ReadKey();
+                Console.WriteLine("Email already exists. ");
                 return;
             }
 
@@ -50,36 +115,38 @@ namespace E_Commerce_System
 
             if (string.IsNullOrWhiteSpace(uPassword) || uPassword.Length < 6)
             {
-                Console.WriteLine("\nPassword must be at least 6 characters.");
-                Console.ReadKey();
+                Console.WriteLine("Password must be at least 6 characters.");
                 return;
             }
 
             Console.Write("Enter Phone Number: ");
             string uPhone = Console.ReadLine()?.Trim();
 
+            Console.WriteLine("Choose role: ");
+            string role = Console.ReadLine()?.Trim();
+
+            // check user role
+            CheckUserRole(role);
+
             var user = new User
             {
                 UName = uName,
                 Email = uEmail,
-                Password = uPassword,
+                Password = HashPassword (uPassword),
                 Phone = uPhone,
-                Role = "User",
+                Role = role,
                 CreatedAt = DateTime.Now
             };
 
             context.Users.Add(user);
             context.SaveChanges();
 
-            Console.WriteLine("\nRegistration successful");
-            Console.ReadKey();
-
+            Console.WriteLine("Registration successful");
         }
 
-        // function to login in to the system (used in main class)
+        // case 2: user login to the system
         static void Login()
         {
-            Console.Clear();
             Console.WriteLine("===== Login =====");
 
             Console.Write("Enter your Email: ");
@@ -88,36 +155,33 @@ namespace E_Commerce_System
             Console.WriteLine("Enter your password: ");
             string logPassword = Console.ReadLine();
 
-            if (string.IsNullOrWhiteSpace(logEmail) || string.IsNullOrWhiteSpace(logPassword))
-            {
-                Console.WriteLine("Email and Password are required. ");
-                Console.ReadKey();
-                return;
-            }
+            // check user email
+            CheckUserEmail(logEmail);
+            CheckRegex(logEmail);
 
             var user = context.Users.FirstOrDefault(u => u.Email == logEmail);
-            if (user == null)
+
+            if (string.IsNullOrWhiteSpace(logPassword))
             {
-                Console.WriteLine("Email not found.");
-                Console.ReadKey();
+                Console.WriteLine("Email and Password are required. ");
                 return;
             }
 
-            if (user.Password != logPassword)
+            // hash log password
+            string hashedPassword = HashPassword(logPassword);
+
+            if (user.Password != hashedPassword)
             {
                 Console.WriteLine("Invalid password");
-                Console.ReadKey();
                 return;
             }
 
             currentUserId = user.UId;
+            currentUserRole = user.Role;
             Console.WriteLine($"Welcome, {user.UName}");
-            Console.ReadKey();
         }
-
-       /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
        
-        // case 1: Get user details
+        // case 3: Get user details
         public static void UserInformation()
         {
             var currentUser = context.Users.FirstOrDefault(u => u.UId == currentUserId);
@@ -128,9 +192,16 @@ namespace E_Commerce_System
             Console.WriteLine("Role: " + currentUser.Role);
         }
 
-        // case 2: Add a new product
+        // case 4: Add a new product
         public static void AddProduct() 
         {
+            // check admin role
+            if (currentUserRole != "Admin")
+            {
+                Console.WriteLine("Access denied. Only admins can add products.");
+                return;
+            }
+
             Console.WriteLine("Enter product name: ");
             string prodName = Console.ReadLine()?.Trim();
 
@@ -161,9 +232,16 @@ namespace E_Commerce_System
             Console.WriteLine("Product added successfully.");
         }
 
-        // case 3: Update product details
+        // case 5: Update product details
         public static void UpdateProduct()
         {
+            // check admin role
+            if (currentUserRole != "Admin")
+            {
+                Console.WriteLine("Access denied. Only admins can add products.");
+                return;
+            }
+
             Console.WriteLine("Enter product ID: ");
             int prodId = int.Parse(Console.ReadLine()?.Trim());
 
@@ -207,7 +285,7 @@ namespace E_Commerce_System
             }
         }
 
-        // case 4:  Get a list of products
+        // case 6:  Get a list of products
         public static void ListOfProducts()
         {
             // count all products
@@ -232,7 +310,7 @@ namespace E_Commerce_System
             }
         }
 
-        // case 5: Get product details by ID
+        // case 7: Get product details by ID
         public static void ProductDetail()
         {
             // loop and list all product with id and name
@@ -266,7 +344,7 @@ namespace E_Commerce_System
             }
         }
 
-        // case 6:  Place a new order
+        // case 8:  Place a new order
         public static void PlaceNewOrder()
         {
             // check user login
@@ -331,8 +409,9 @@ namespace E_Commerce_System
                 // check product stock
                 if (product.Stock < qty)
                 {
-                    Console.WriteLine("Not enough stock.");
-                    continue;
+                    Console.WriteLine($"Cannot place order. Only {product.Stock} items available in stock.");
+
+                    return; // stop entire order
                 }
 
                 var orderProduct = new OrderProduct
@@ -361,7 +440,7 @@ namespace E_Commerce_System
             Console.WriteLine($"Total Amount: {order.TotalAmount}");
         }
 
-        // case 7: Get all orders for a user
+        // case 9: Get all orders for a user
         public static void GetUserOrders()
         {
             // search for all orders where user id equal current user id
@@ -390,7 +469,7 @@ namespace E_Commerce_System
 
         }
 
-        // case 8: Get order details
+        // case 10: Get order details
         public static void OrderDetail()
         {
             Console.WriteLine("Enter order ID: ");
@@ -412,7 +491,7 @@ namespace E_Commerce_System
             Console.WriteLine("Order total amount: " + orders.TotalAmount);
         }
 
-        // case 9: Add a review for a product
+        // case 11: Add a review for a product
         public static void AddReview()
         {
             Console.WriteLine("Enter product ID: ");
@@ -437,9 +516,29 @@ namespace E_Commerce_System
 
                 DateTime date = DateTime.Now;
 
+                Review review = new Review
+                {
+                    Rating = rate,
+                    Comment = comment,
+                    ReviewDate = DateTime.Now,
+                    UId = currentUserId,
+                    PId = productId
+                };
+
                 // add review
-                context.Reviews.Add( new Review { Rating = rate, Comment = comment, ReviewDate = date, UId=currentUserId, PId= productId });
+                context.Reviews.Add(review);
                 context.SaveChanges(); // save change in database 
+
+                // recalculate overall rating
+                product.OverallRating = (decimal)product.Reviews
+                                                        .Append(review)
+                                                        .Average(r => r.Rating);
+
+                // save updated product rating
+                context.SaveChanges();
+
+                Console.WriteLine("Review added successfully.");
+                Console.WriteLine("Updated Overall Rating: " + product.OverallRating);
             }
 
             else
@@ -450,7 +549,7 @@ namespace E_Commerce_System
 
         }
 
-        // case 10: Get all reviews for a product
+        // case 12: Get all reviews for a product
         public static void GetAllReview()
         {
             // loop and list all product with id and name
@@ -496,7 +595,7 @@ namespace E_Commerce_System
             }
         }
 
-        // case 11:  Edit review
+        // case 13:  Edit review
         public static void EditReview()
         {
             // search all reviews for the user 
@@ -573,7 +672,26 @@ namespace E_Commerce_System
             }
         }
 
-        // case 12: Logout
+        // case 14: Exit
+        public static bool Exit()
+        {
+            Console.WriteLine("Are you sure you want to Exit? (yes/no): ");
+            string confirmLogout = Console.ReadLine() ?? string.Empty;
+
+            if (confirmLogout == "yes")
+            {
+                Console.WriteLine("Exiting system...");
+                Console.WriteLine("Thank you for using E-Commerce System!");
+                return true;
+            }
+            else
+            {
+                Console.WriteLine("Exit cancelled. Returning to user menu...");
+                return false;
+            }
+        }
+
+        // function to Logout user 
         public static bool Logout()
         {
             Console.WriteLine("Are you sure you want to logout? (yes/no): ");
@@ -586,129 +704,30 @@ namespace E_Commerce_System
             }
             else
             {
-                Console.WriteLine("Exit cancelled. Returning to user menu...");
+                Console.WriteLine("Logout cancelled. Returning...");
                 return false;
             }
         }
 
-        // user menu
-        public static void UserMenu()
+        // function to choose option
+        public static int ChooseOption()
         {
-            bool logout = false;
-            
-            while (!logout)
+            int option;
+
+            while (true)
             {
-                Console.WriteLine("====================== E-Commerce System ======================");
-                Console.WriteLine("1. Get user details.");
-                Console.WriteLine("2. Add a new product.");
-                Console.WriteLine("3. Update product details.");
-                Console.WriteLine("4. Get a list of products.");
-                Console.WriteLine("5. Get product details.");
-                Console.WriteLine("6. Place a new order.");
-                Console.WriteLine("7. Get all orders for a user.");
-                Console.WriteLine("8. Get order details.");
-                Console.WriteLine("9. Add a review for a product.");
-                Console.WriteLine("10. Get all reviews for a product.");
-                Console.WriteLine("11. Edit review");
-                Console.WriteLine("12. Logout.");
-                
-                Console.WriteLine("Choose option you need: ");
-                int option = int.Parse(Console.ReadLine()); 
+                Console.Write("Choose option you need: ");
+                string input = Console.ReadLine() ?? string.Empty;
 
-                switch(option)
+                if (int.TryParse(input, out option) && option >= 1 && option <= 14)
                 {
-                    case 1:
-
-                        UserInformation();
-
-                        break;
-
-                    case 2:
-
-                        AddProduct();
-
-                        break;
-
-                    case 3:
-
-                        UpdateProduct();
-
-                        break;
-
-                    case 4:
-
-                        ListOfProducts();
-
-                        break;
-
-
-                    case 5:
-
-                        ProductDetail();
-
-                        break;
-
-
-                    case 6:
-
-                        PlaceNewOrder();
-
-                        break;
-
-
-                    case 7:
-
-                        GetUserOrders();
-
-                        break;
-
-
-                    case 8:
-
-                        OrderDetail();
-
-                        break;
-
-                    case 9:
-
-                        AddReview();
-
-                        break;
-
-
-                    case 10:
-
-                        GetAllReview();
-
-                        break;
-
-
-                    case 11:
-
-                        EditReview();
-
-                        break;
-
-                    case 12:
-
-                        logout = Logout();
-                        
-                        break;
-
-                    default:
-
-                        Console.WriteLine("Invalid option. Please try again!.");
-
-                        break;
-
+                    return option;
                 }
-
-                Console.WriteLine("Press any key to continue....");
-                Console.ReadKey();
-                Console.Clear();
-
+                else
+                {
+                    Console.WriteLine("Invalid input. Please enter a number between 1 and 14.");
+                }
             }
-
         }
 
         // system main
@@ -717,44 +736,139 @@ namespace E_Commerce_System
             bool exit = false;
             while (!exit)
             {
-                Console.Clear();
-                Console.WriteLine("===== E‑Commerce System =====");
+                Console.WriteLine("====================== E-Commerce System ======================");
                 Console.WriteLine("1. Register");
                 Console.WriteLine("2. Login");
-                Console.WriteLine("3. Exit");
+                Console.WriteLine("3. Get user details.");
+                Console.WriteLine("4. Add a new product.");
+                Console.WriteLine("5. Update product details.");
+                Console.WriteLine("6. Get a list of products.");
+                Console.WriteLine("7. Get product details.");
+                Console.WriteLine("8. Place a new order.");
+                Console.WriteLine("9. Get all orders for a user.");
+                Console.WriteLine("10. Get order details.");
+                Console.WriteLine("11. Add a review for a product.");
+                Console.WriteLine("12. Get all reviews for a product.");
+                Console.WriteLine("13. Edit review");
+                Console.WriteLine("14. Exit");
 
-                Console.Write("Choose option: ");
-                string input = Console.ReadLine();
-
-                if (!int.TryParse(input, out int choice))
-                {
-                    Console.WriteLine("Invalid choice.");
-                    Console.ReadKey();
-                    continue;
-                }
+                int choice = ChooseOption();
 
                 switch (choice)
                 {
                     case 1:
+
                         Register();
+
                         break;
 
                     case 2:
+
                         Login();
 
-                        UserMenu();
                         break;
 
                     case 3:
-                        exit = true;
+
+                        Login();
+                        UserInformation();
+                        Logout();
+
+                        break;
+
+                    case 4:
+
+                        Login();
+                        AddProduct();
+                        Logout();
+
+                        break;
+
+                    case 5:
+
+                        Login();
+                        UpdateProduct();
+                        Logout();
+
+                        break;
+
+                    case 6:
+
+                        ListOfProducts();
+
+                        break;
+
+
+                    case 7:
+
+                        ProductDetail();
+
+                        break;
+
+                    case 8:
+
+                        Login();
+                        PlaceNewOrder();
+                        Logout();
+
+                        break;
+
+                    case 9:
+
+                        Login();
+                        GetUserOrders();
+                        Logout();
+
+                        break;
+
+                    case 10:
+
+                        Login();
+                        OrderDetail();
+                        Logout();
+
+                        break;
+
+                    case 11:
+
+                        Login();
+                        AddReview();
+                        Logout();
+
+                        break;
+
+                    case 12:
+
+                        Login();
+                        GetAllReview();
+                        Logout();
+
+                        break;
+
+                    case 13:
+
+                        Login();
+                        EditReview();
+                        Logout();
+
+                        break;
+
+                    case 14:
+
+                        exit = Exit();
 
                         break;
 
                     default:
-                        Console.WriteLine("Invalid choice");
-                        Console.ReadKey();
+
+                        Console.WriteLine("Invalid choice. Please try again!.");
+
                         break;
                 }
+
+                Console.WriteLine("Press any key to continue....");
+                Console.ReadKey();
+                Console.Clear();
             }
         }
     }

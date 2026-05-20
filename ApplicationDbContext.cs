@@ -9,10 +9,12 @@ namespace E_Commerce_System
 {
     internal class ApplicationDbContext : DbContext
     {
+        internal object user;
+
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
             //connection t database
-            options.UseSqlServer(" Data Source=(localdb)\\MSSQLLocalDB; Initial Catalog=E-Commerce System; Integrated Security=true; TrustServerCertificate=True ");
+            options.UseSqlServer(" Data Source=(localdb)\\MSSQLLocalDB; Initial Catalog=E-CommerceSystem; Integrated Security=true; TrustServerCertificate=True ");
         }
 
         // register the models 

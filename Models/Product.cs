@@ -25,17 +25,8 @@ namespace E_Commerce_System.Models
         [Range(0, double.MaxValue, ErrorMessage = "Stock must be 0 or Positive value")]
         public int Stock {  get; set; }
 
-        [NotMapped]
-        public decimal OverallRating
-        {
-            get
-            {
-                if (Reviews == null || Reviews.Count == 0)
-                    return 0;
-
-                return (decimal)Reviews.Average(r => r.Rating);
-            }
-        }
+        [Required]
+        public decimal OverallRating { get; set; }
 
         public virtual ICollection<Review> Reviews { get;set; }
 
